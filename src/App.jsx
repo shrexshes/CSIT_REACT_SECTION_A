@@ -60,6 +60,15 @@ function App() {
 
     Return only a valid JSON array of 2 recipes , no markdown , no extra texts
     ` 
+
+    const response=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generativeContent',{
+      method:"POST", //GET,POST,PUT,PATCH,DELTE
+      headers:{"Content-Type":"application/json","X-goo-api-key":apiKey},
+      body:JSON.stringify({
+        contents:[{parts:[{text:prompt}]}],
+        generationConfig:{temperature:0.9,maxOutputTokens:8192}
+      })
+    })
   }
 
   const handleMoodSelect=(mood)=>{
