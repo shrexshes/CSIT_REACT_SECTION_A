@@ -9,20 +9,20 @@ import ApiSetUp from './components/ApiSetUp'
 import MoodSelector from './components/MoodSelector'
 
 function App() {
-  const [showApiSetUp,setShowApiSetUp]=useState(false)
-  const [apiKeyInput,setApiKeyInput]=useState('')
-  const [apiKey,setApiKey]=useState("")
-  const [customMood,setCustomMood]=useState("")
-  const [selectedMood,setSelectedMood]=useState(null)
-  const [recipes,setRecipes]=useState([])
+  const [showApiSetUp, setShowApiSetUp] = useState(false)
+  const [apiKeyInput, setApiKeyInput] = useState('')
+  const [apiKey, setApiKey] = useState("")
+  const [customMood, setCustomMood] = useState("")
+  const [selectedMood, setSelectedMood] = useState(null)
+  const [recipes, setRecipes] = useState([])
 
-  useEffect(()=>{
-    if(apiKey){
-      localStorage.setItem("apiKey",apiKey)
+  useEffect(() => {
+    if (apiKey) {
+      localStorage.setItem("apiKey", apiKey)
     }
-  },[apiKey])
+  }, [apiKey])
 
-  
+
   // shrexshes
   const MOODS = [
     { id: "happy", emoji: "😄", label: "Happy", color: "from-yellow-400 to-orange-400", bg: "bg-yellow-50", border: "border-yellow-300" },
@@ -37,18 +37,18 @@ function App() {
 
 
 
-  const handleApiKeySubmit=(e)=>{
+  const handleApiKeySubmit = (e) => {
     e.preventDefault()
-    if(apiKeyInput){
+    if (apiKeyInput) {
       setApiKey(apiKeyInput)
       setShowApiSetUp(false)
     }
   }
 
-  const fetchRecipes=async(moodLabel)=>{
+  const fetchRecipes = async (moodLabel) => {
     setRecipes([])
-
-    const prompt=`You are a creative culinary expert. Based on someone feeling ${moodLabel}, rightnow suggest 2 recipe ideas that match their mood. 
+    try {
+      const prompt = `You are a creative culinary expert. Based on someone feeling ${moodLabel}, rightnow suggest 2 recipe ideas that match their mood. 
     For each recipe , return a JSON object with :
     - name:string(creative recipe name with nepali background or origin)
     - emoji:string(1 fitting emoji)
@@ -59,19 +59,42 @@ function App() {
     - steps:array of string(5-7 clear cooking steps)
 
     Return only a valid JSON array of 2 recipes , no markdown , no extra texts
-    ` 
+    `
 
-    const response=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generativeContent',{
-      method:"POST", //GET,POST,PUT,PATCH,DELTE
-      headers:{"Content-Type":"application/json","X-goo-api-key":apiKey},
-      body:JSON.stringify({
-        contents:[{parts:[{text:prompt}]}],
-        generationConfig:{temperature:0.9,maxOutputTokens:8192}
-      })
-    })
+      const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent", {
+        method: "POST", //GET,POST,PUT,PATCH,DELTE
+        headers: { "Content-Type": "application/json", "X-goog-api-key": apiKey },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.9, maxOutputTokens: 8192 }
+        })
+      });
+
+      // if kei garera error ayo bhane
+      if (!response.ok) {
+        const err = await response.json();
+        console.log(err);
+        throw new Error("Something went wrong ", err);
+      }
+
+      //if success bho bhanne
+      const data = await response.json();
+      const text = data.candidates[0]?.content?.parts[0]?.text;
+      console.log(text)
+
+      //if text is null
+      if (!text) throw new Error("No response from GEMINI")
+
+      //to remove unwanted /n text in our json.
+      const cleaned = text.replace(/```json\n/g, "").replace(/```\n?/g, "").trim()
+      const parsed = JSON.parse(cleaned);
+      setRecipes(parsed)
+    } catch (error) {
+      console.log(error)
+    }
   }
 
-  const handleMoodSelect=(mood)=>{
+  const handleMoodSelect = (mood) => {
     //this function is used to select the mood from the MOOD json data and if there is anything typed in custom mood then it makes it empty 
 
     setSelectedMood(mood)
@@ -79,19 +102,21 @@ function App() {
     console.log(mood.label)
 
     // TODO : Fetch Recipe from GEMINI
+    fetchRecipes(mood.label)
   }
 
-  const handleCustomMoodSubmit=(e)=>{
+  const handleCustomMoodSubmit = (e) => {
     e.preventDefault()
-    if(customMood){
-      setSelectedMood({id:"custom",emoji:"custom",label:customMood})
+    if (customMood) {
+      setSelectedMood({ id: "custom", emoji: "custom", label: customMood })
     }
     // TODO: fetch recipes
+    fetchRecipes(customMood)
   }
-  
-  if(showApiSetUp){
-    return(
-      <ApiSetUp apiKeyInput={apiKeyInput} setApiKeyInput={setApiKeyInput} onSubmit={handleApiKeySubmit}/>
+
+  if (showApiSetUp) {
+    return (
+      <ApiSetUp apiKeyInput={apiKeyInput} setApiKeyInput={setApiKeyInput} onSubmit={handleApiKeySubmit} />
     )
   }
 
@@ -101,10 +126,33 @@ function App() {
     <>
       {/* <h1 className='bg-blue-400 text-9xl underline px-40 py-40 mx-40 my-40 border-8 rounded-full text-pink-400 border-amber-200'>Helo World</h1> */}
 
-      <Header onChangeApiKey={()=>setShowApiSetUp(true)}/>
-      <HeroText/>
-      <MoodSelector moods={MOODS}/>
+      <Header onChangeApiKey={() => setShowApiSetUp(true)} />
+      <HeroText />
+      <MoodSelector moods={MOODS} onCustomMoodSubmit={handleCustomMoodSubmit} onMoodSelect={handleMoodSelect} customMood={customMood} setCustomMood={setCustomMood} />
+      <div className='px-5 max-w-6xl mx-auto'>
+        {recipes.map((recipe) => (
+          <div className='bg-neutral-900 text-white google p-6'>
+            <h2 className='text-3xl font-bold'>{recipe.name}</h2>
+            <p className='text-lg font-light'>{recipe.description}</p>
+            <p className='bg-white w-fit text-black rounded-full px-2 py-4'>{recipe.cookTime}</p>
+            <p className='bg-white w-fit text-black rounded-full px-2 py-4'>{recipe.difficulty}</p>
 
+            <h2 className='text-3xl font-bold'>Ingredient</h2>
+            {recipe.ingredients.map((ingredient) => (
+              <li>
+                {ingredient}
+              </li>
+            ))}
+
+            <h2 className='text-3xl font-bold'>Step</h2>
+            {recipe.steps.map((step) => (
+              <li>
+                {step}
+              </li>
+            ))}
+          </div>
+        ))}
+      </div>
     </>
   )
 }
