@@ -6,11 +6,15 @@ import './App.css'
 import Header from './components/Header'
 import HeroText from './components/HeroText'
 import ApiSetUp from './components/ApiSetUp'
+import MoodSelector from './components/MoodSelector'
 
 function App() {
   const [showApiSetUp,setShowApiSetUp]=useState(false)
   const [apiKeyInput,setApiKeyInput]=useState('')
   const [apiKey,setApiKey]=useState("")
+  const [customMood,setCustomMood]=useState("")
+  const [selectedMood,setSelectedMood]=useState(null)
+  const [recipes,setRecipes]=useState([])
 
   useEffect(()=>{
     if(apiKey){
@@ -40,6 +44,41 @@ function App() {
       setShowApiSetUp(false)
     }
   }
+
+  const fetchRecipes=async(moodLabel)=>{
+    setRecipes([])
+
+    const prompt=`You are a creative culinary expert. Based on someone feeling ${moodLabel}, rightnow suggest 2 recipe ideas that match their mood. 
+    For each recipe , return a JSON object with :
+    - name:string(creative recipe name with nepali background or origin)
+    - emoji:string(1 fitting emoji)
+    - description:string(1 sentence about whyt this recipe fits the mood)
+    - difficulty : string("EASY","MEDIUM","HARD")
+    - cookTime:string(eg:3mins)
+    - ingredients : array of string (4-5 clear ingredients)
+    - steps:array of string(5-7 clear cooking steps)
+
+    Return only a valid JSON array of 2 recipes , no markdown , no extra texts
+    ` 
+  }
+
+  const handleMoodSelect=(mood)=>{
+    //this function is used to select the mood from the MOOD json data and if there is anything typed in custom mood then it makes it empty 
+
+    setSelectedMood(mood)
+    setCustomMood("")
+    console.log(mood.label)
+
+    // TODO : Fetch Recipe from GEMINI
+  }
+
+  const handleCustomMoodSubmit=(e)=>{
+    e.preventDefault()
+    if(customMood){
+      setSelectedMood({id:"custom",emoji:"custom",label:customMood})
+    }
+    // TODO: fetch recipes
+  }
   
   if(showApiSetUp){
     return(
@@ -55,6 +94,8 @@ function App() {
 
       <Header onChangeApiKey={()=>setShowApiSetUp(true)}/>
       <HeroText/>
+      <MoodSelector moods={MOODS}/>
+
     </>
   )
 }
